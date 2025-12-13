@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  @apply bg-zinc-950 text-zinc-100;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(800px 500px at 20% 10%, rgba(99, 102, 241, 0.22), transparent 60%),
+    radial-gradient(700px 450px at 80% 20%, rgba(236, 72, 153, 0.18), transparent 60%),
+    radial-gradient(900px 650px at 50% 90%, rgba(16, 185, 129, 0.10), transparent 60%);
+  opacity: 1;
+}
+
+* {
+  @apply border-zinc-800;
+}
+
