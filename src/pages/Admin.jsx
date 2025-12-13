@@ -116,7 +116,18 @@ export function AdminPage() {
         })
 
     if (rpcError) {
-      setError(rpcError.message)
+      const msg = rpcError.message ?? 'No se pudo crear la categoría'
+      const lower = String(msg).toLowerCase()
+
+      if (lower.includes('admin_clone_category') && lower.includes('schema cache')) {
+        setError(
+          'Te falta crear/actualizar el RPC admin_clone_category en Supabase (SQL). ' +
+            'Ejecuta el bloque de SQL de admin_clone_category y luego recarga el schema cache (Dashboard → API → Reload schema).'
+        )
+        return
+      }
+
+      setError(msg)
       return
     }
 
