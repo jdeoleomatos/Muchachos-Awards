@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { isSupabaseConfigured, supabase, supabaseConfigError } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export function AdminPage() {
@@ -43,6 +43,12 @@ export function AdminPage() {
     setIsLoading(true)
     setError(null)
 
+    if (!isSupabaseConfigured || !supabase) {
+      setError(supabaseConfigError)
+      setIsLoading(false)
+      return
+    }
+
     const baseSelect = 'id,name,created_at,category_nominees(votes_count,nominees(id,name))'
     let { data, error: qError } = await supabase
       .from('categories')
@@ -82,6 +88,10 @@ export function AdminPage() {
 
   async function createCategory() {
     setError(null)
+    if (!isSupabaseConfigured || !supabase) {
+      setError(supabaseConfigError)
+      return
+    }
     const name = newCategoryName.trim()
     const description = newCategoryDescription.trim()
     const sourceId = cloneFromCategoryId || null
@@ -116,6 +126,11 @@ export function AdminPage() {
   async function deleteCategory(categoryId) {
     setError(null)
 
+    if (!isSupabaseConfigured || !supabase) {
+      setError(supabaseConfigError)
+      return
+    }
+
     const { error: rpcError } = await supabase.rpc('admin_delete_category', {
       p_username: username,
       p_password: password,
@@ -143,6 +158,11 @@ export function AdminPage() {
   async function saveEditDescription(categoryId) {
     setError(null)
 
+    if (!isSupabaseConfigured || !supabase) {
+      setError(supabaseConfigError)
+      return
+    }
+
     const { error: rpcError } = await supabase.rpc('admin_update_category_description', {
       p_username: username,
       p_password: password,
@@ -161,6 +181,10 @@ export function AdminPage() {
 
   async function addNominee(categoryId) {
     setError(null)
+    if (!isSupabaseConfigured || !supabase) {
+      setError(supabaseConfigError)
+      return
+    }
     const raw = nomineeDrafts[categoryId] ?? ''
     const name = raw.trim()
     if (!name) return
@@ -184,6 +208,11 @@ export function AdminPage() {
 
   async function deleteNominee(categoryId, nomineeId) {
     setError(null)
+
+    if (!isSupabaseConfigured || !supabase) {
+      setError(supabaseConfigError)
+      return
+    }
 
     const { error: rpcError } = await supabase.rpc('admin_remove_nominee', {
       p_username: username,

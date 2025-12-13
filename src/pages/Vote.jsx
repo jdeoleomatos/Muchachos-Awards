@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { isSupabaseConfigured, supabase, supabaseConfigError } from '../lib/supabase'
 
 const COOLDOWN_MS = 45 * 60 * 1000
 const LS_COOLDOWNS = 'mawards.cooldowns'
@@ -65,6 +65,14 @@ export function VotePage() {
     async function load() {
       setIsLoading(true)
       setError(null)
+
+      if (!isSupabaseConfigured || !supabase) {
+        if (isMounted) {
+          setError(supabaseConfigError)
+          setIsLoading(false)
+        }
+        return
+      }
 
       const baseSelect = 'id,name,category_nominees(votes_count,nominees(id,name))'
       let { data, error: qError } = await supabase

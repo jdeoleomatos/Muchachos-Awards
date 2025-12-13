@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { isSupabaseConfigured, supabase, supabaseConfigError } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
@@ -34,6 +34,15 @@ export function AuthProvider({ children }) {
     let isMounted = true
 
     async function hydrate() {
+      if (!isSupabaseConfigured || !supabase) {
+        if (isMounted) {
+          setAdmin(null)
+          setUser(null)
+          setIsLoading(false)
+        }
+        return
+      }
+
       const stored = readStoredAdmin()
       if (!stored?.username || !stored?.password) {
         if (isMounted) {
@@ -78,6 +87,9 @@ export function AuthProvider({ children }) {
       user,
       isAdmin: Boolean(user?.is_admin),
       async login({ username, password }) {
+        if (!isSupabaseConfigured || !supabase) {
+          throw new Error(supabaseConfigError)
+        }
         const { data, error } = await supabase.rpc('admin_login', {
           p_username: username,
           p_password: password,
