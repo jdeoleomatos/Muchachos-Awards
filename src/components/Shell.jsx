@@ -30,6 +30,18 @@ export function Shell({ children }) {
               Votar
             </NavLink>
 
+            <NavLink
+              to="/resultados"
+              className={({ isActive }) =>
+                cx(
+                  'rounded-md px-3 py-1.5 hover:bg-zinc-900',
+                  isActive ? 'bg-zinc-900' : 'text-zinc-300',
+                )
+              }
+            >
+              Resultados
+            </NavLink>
+
             {isAdmin ? (
               <NavLink
                 to="/admin"
