@@ -75,7 +75,7 @@ export function ResultsPage() {
     }
   }, [])
 
-  const { topCategories, perCategory, mostPairs, leastPairs } = useMemo(() => {
+  const { topCategories, perCategory, totalsSorted, leastTotals } = useMemo(() => {
     const per = (categories ?? []).map((c) => {
       const r = winnersForCategory(c)
       return {
@@ -86,23 +86,25 @@ export function ResultsPage() {
       }
     })
 
-    const pairs = []
+    const totals = new Map()
     for (const c of categories ?? []) {
       for (const n of c.nominees ?? []) {
         if (!n.nomineeId || !n.nomineeName) continue
-        pairs.push({
-          key: `${c.id}:${n.nomineeId}`,
-          categoryId: c.id,
-          categoryName: c.name,
-          nomineeId: n.nomineeId,
-          nomineeName: n.nomineeName,
-          votes: n.votes ?? 0,
+        const prev = totals.get(n.nomineeId)
+        totals.set(n.nomineeId, {
+          id: n.nomineeId,
+          name: n.nomineeName,
+          votes: (prev?.votes ?? 0) + (n.votes ?? 0),
         })
       }
     }
 
+    const allTotals = Array.from(totals.values()).sort(
+      (a, b) => b.votes - a.votes || String(a.name).localeCompare(String(b.name)),
+    )
+
     const withVotes = per.filter((x) => x.winners.length > 0)
-    if (withVotes.length === 0) return { topCategories: [], perCategory: per, mostPairs: [], leastPairs: [] }
+    if (withVotes.length === 0) return { topCategories: [], perCategory: per, totalsSorted: allTotals, leastTotals: [] }
 
     let maxTotal = withVotes[0].totalVotes
     for (const item of withVotes) {
@@ -113,32 +115,20 @@ export function ResultsPage() {
       .filter((x) => x.totalVotes === maxTotal)
       .sort((a, b) => String(a.categoryName).localeCompare(String(b.categoryName)))
 
-    if (pairs.length === 0) {
-      return { topCategories: top, perCategory: per, mostPairs: [], leastPairs: [] }
+    if (allTotals.length === 0) {
+      return { topCategories: top, perCategory: per, totalsSorted: [], leastTotals: [] }
     }
 
-    let maxPairVotes = pairs[0].votes
-    let minPairVotes = pairs[0].votes
-    for (const p of pairs) {
-      if (p.votes > maxPairVotes) maxPairVotes = p.votes
-      if (p.votes < minPairVotes) minPairVotes = p.votes
+    let minTotal = allTotals[0].votes
+    for (const item of allTotals) {
+      if (item.votes < minTotal) minTotal = item.votes
     }
 
-    const most = pairs
-      .filter((p) => p.votes === maxPairVotes)
-      .sort((a, b) =>
-        String(a.categoryName).localeCompare(String(b.categoryName)) ||
-        String(a.nomineeName).localeCompare(String(b.nomineeName)),
-      )
+    const least = allTotals
+      .filter((x) => x.votes === minTotal)
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)))
 
-    const least = pairs
-      .filter((p) => p.votes === minPairVotes)
-      .sort((a, b) =>
-        String(a.categoryName).localeCompare(String(b.categoryName)) ||
-        String(a.nomineeName).localeCompare(String(b.nomineeName)),
-      )
-
-    return { topCategories: top, perCategory: per, mostPairs: most, leastPairs: least }
+    return { topCategories: top, perCategory: per, totalsSorted: allTotals, leastTotals: least }
   }, [categories])
 
   if (isLoading) {
@@ -172,30 +162,24 @@ export function ResultsPage() {
             <h2 className="text-lg font-semibold">Récord global</h2>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl border bg-zinc-900/20 px-4 py-3">
-                <div className="text-sm font-semibold">Más votos (nominado + categoría)</div>
+                <div className="text-sm font-semibold">Puntaje total por nominado</div>
                 <div className="mt-2 grid gap-2">
-                  {mostPairs.map((p) => (
-                    <div key={p.key} className="rounded-lg border bg-zinc-950 px-3 py-2">
-                      <div className="truncate text-sm font-medium">{p.nomineeName}</div>
-                      <div className="mt-1 flex items-center justify-between gap-3 text-xs text-zinc-400">
-                        <span className="truncate">{p.categoryName}</span>
-                        <span className="shrink-0 text-zinc-200">{p.votes}</span>
-                      </div>
+                  {totalsSorted.map((n) => (
+                    <div key={n.id} className="flex items-center justify-between rounded-lg border bg-zinc-950 px-3 py-2">
+                      <div className="truncate text-sm font-medium">{n.name}</div>
+                      <div className="shrink-0 text-sm text-zinc-200">{n.votes}</div>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="rounded-xl border bg-zinc-900/20 px-4 py-3">
-                <div className="text-sm font-semibold">Menos votos (nominado + categoría)</div>
+                <div className="text-sm font-semibold">Menos votos (total)</div>
                 <div className="mt-2 grid gap-2">
-                  {leastPairs.map((p) => (
-                    <div key={p.key} className="rounded-lg border bg-zinc-950 px-3 py-2">
-                      <div className="truncate text-sm font-medium">{p.nomineeName}</div>
-                      <div className="mt-1 flex items-center justify-between gap-3 text-xs text-zinc-400">
-                        <span className="truncate">{p.categoryName}</span>
-                        <span className="shrink-0 text-zinc-200">{p.votes}</span>
-                      </div>
+                  {leastTotals.map((n) => (
+                    <div key={n.id} className="flex items-center justify-between rounded-lg border bg-zinc-950 px-3 py-2">
+                      <div className="truncate text-sm font-medium">{n.name}</div>
+                      <div className="shrink-0 text-sm text-zinc-200">{n.votes}</div>
                     </div>
                   ))}
                 </div>
