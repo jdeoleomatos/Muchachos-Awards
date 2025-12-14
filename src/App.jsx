@@ -18,7 +18,14 @@ export default function App() {
     <Shell>
       <Routes>
         <Route path="/" element={<VotePage />} />
-        <Route path="/resultados" element={<ResultsPage />} />
+        <Route
+          path="/resultados"
+          element={
+            <AdminRoute>
+              <ResultsPage />
+            </AdminRoute>
+          }
+        />
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/admin"

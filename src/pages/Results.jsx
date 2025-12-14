@@ -13,6 +13,24 @@ function normalizeCategories(rows) {
   }))
 }
 
+function winnersForCategory(category) {
+  const list = (category?.nominees ?? []).filter((n) => n.nomineeId && n.nomineeName)
+  if (list.length === 0) return { totalVotes: 0, winners: [] }
+
+  let maxVotes = list[0].votes
+  let totalVotes = 0
+  for (const n of list) {
+    totalVotes += n.votes
+    if (n.votes > maxVotes) maxVotes = n.votes
+  }
+
+  const winners = list
+    .filter((n) => n.votes === maxVotes)
+    .sort((a, b) => String(a.nomineeName).localeCompare(String(b.nomineeName)))
+
+  return { totalVotes, winners }
+}
+
 export function ResultsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -57,35 +75,30 @@ export function ResultsPage() {
     }
   }, [])
 
-  const { most, least, totalNominees } = useMemo(() => {
-    const totals = new Map()
-
-    for (const category of categories) {
-      for (const n of category.nominees ?? []) {
-        if (!n.nomineeId) continue
-        const prev = totals.get(n.nomineeId)
-        const nextVotes = (prev?.votes ?? 0) + (n.votes ?? 0)
-        totals.set(n.nomineeId, { id: n.nomineeId, name: n.nomineeName ?? '', votes: nextVotes })
+  const { topCategories, perCategory } = useMemo(() => {
+    const per = (categories ?? []).map((c) => {
+      const r = winnersForCategory(c)
+      return {
+        categoryId: c.id,
+        categoryName: c.name,
+        totalVotes: r.totalVotes,
+        winners: r.winners,
       }
+    })
+
+    const withVotes = per.filter((x) => x.winners.length > 0)
+    if (withVotes.length === 0) return { topCategories: [], perCategory: per }
+
+    let maxTotal = withVotes[0].totalVotes
+    for (const item of withVotes) {
+      if (item.totalVotes > maxTotal) maxTotal = item.totalVotes
     }
 
-    const all = Array.from(totals.values()).filter((x) => x.name)
-    if (all.length === 0) {
-      return { most: [], least: [], totalNominees: 0 }
-    }
+    const top = withVotes
+      .filter((x) => x.totalVotes === maxTotal)
+      .sort((a, b) => String(a.categoryName).localeCompare(String(b.categoryName)))
 
-    let maxVotes = all[0].votes
-    let minVotes = all[0].votes
-
-    for (const item of all) {
-      if (item.votes > maxVotes) maxVotes = item.votes
-      if (item.votes < minVotes) minVotes = item.votes
-    }
-
-    const mostTies = all.filter((x) => x.votes === maxVotes).sort((a, b) => a.name.localeCompare(b.name))
-    const leastTies = all.filter((x) => x.votes === minVotes).sort((a, b) => a.name.localeCompare(b.name))
-
-    return { most: mostTies, least: leastTies, totalNominees: all.length }
+    return { topCategories: top, perCategory: per }
   }, [categories])
 
   if (isLoading) {
@@ -104,43 +117,69 @@ export function ResultsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Resultados</h1>
-        <p className="mt-1 text-sm text-zinc-400">Nombrados con más y menos votos (total acumulado).</p>
+        <p className="mt-1 text-sm text-zinc-400">
+          Categoría con más votos y ganadores por categoría.
+        </p>
       </div>
 
-      {totalNominees === 0 ? (
+      {perCategory.every((c) => (c.winners ?? []).length === 0) ? (
         <div className="rounded-xl border bg-zinc-950 p-4 text-sm text-zinc-400">
           No hay votos / nominados para calcular resultados.
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <>
           <section className="rounded-2xl border bg-zinc-950 p-5">
-            <h2 className="text-lg font-semibold">Más votos</h2>
-            <div className="mt-3 grid gap-2">
-              {most.map((n) => (
-                <div key={n.id} className="flex items-center justify-between rounded-xl border bg-zinc-900/20 px-4 py-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{n.name}</div>
+            <h2 className="text-lg font-semibold">Categoría con más votos</h2>
+            <div className="mt-3 grid gap-3">
+              {topCategories.map((c) => (
+                <div key={c.categoryId} className="rounded-xl border bg-zinc-900/20 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{c.categoryName}</div>
+                      <div className="text-xs text-zinc-400">Ganador(es)</div>
+                    </div>
+                    <div className="shrink-0 text-sm text-zinc-200">{c.totalVotes} votos</div>
                   </div>
-                  <div className="shrink-0 text-sm text-zinc-200">{n.votes}</div>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {c.winners.map((w) => (
+                      <div key={w.nomineeId} className="flex items-center justify-between rounded-lg border bg-zinc-950 px-3 py-2">
+                        <div className="truncate text-sm">{w.nomineeName}</div>
+                        <div className="text-sm text-zinc-200">{w.votes}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
           </section>
 
           <section className="rounded-2xl border bg-zinc-950 p-5">
-            <h2 className="text-lg font-semibold">Menos votos</h2>
-            <div className="mt-3 grid gap-2">
-              {least.map((n) => (
-                <div key={n.id} className="flex items-center justify-between rounded-xl border bg-zinc-900/20 px-4 py-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{n.name}</div>
+            <h2 className="text-lg font-semibold">Ganadores por categoría</h2>
+            <div className="mt-3 grid gap-3">
+              {perCategory.map((c) => (
+                <div key={c.categoryId} className="rounded-xl border bg-zinc-900/20 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="truncate text-sm font-semibold">{c.categoryName}</div>
+                    <div className="shrink-0 text-xs text-zinc-400">{c.totalVotes} votos totales</div>
                   </div>
-                  <div className="shrink-0 text-sm text-zinc-200">{n.votes}</div>
+
+                  {c.winners.length === 0 ? (
+                    <div className="mt-2 text-sm text-zinc-500">Sin nominados</div>
+                  ) : (
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      {c.winners.map((w) => (
+                        <div key={w.nomineeId} className="flex items-center justify-between rounded-lg border bg-zinc-950 px-3 py-2">
+                          <div className="truncate text-sm">{w.nomineeName}</div>
+                          <div className="text-sm text-zinc-200">{w.votes}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </section>
-        </div>
+        </>
       )}
     </div>
   )
