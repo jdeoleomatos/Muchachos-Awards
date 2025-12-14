@@ -31,6 +31,13 @@ function winnersForCategory(category) {
   return { totalVotes, winners }
 }
 
+function normalizeNameKey(name) {
+  return String(name ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
 export function ResultsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -90,10 +97,12 @@ export function ResultsPage() {
     for (const c of categories ?? []) {
       for (const n of c.nominees ?? []) {
         if (!n.nomineeId || !n.nomineeName) continue
-        const prev = totals.get(n.nomineeId)
-        totals.set(n.nomineeId, {
-          id: n.nomineeId,
-          name: n.nomineeName,
+        const key = normalizeNameKey(n.nomineeName)
+        if (!key) continue
+        const prev = totals.get(key)
+        totals.set(key, {
+          key,
+          name: prev?.name ?? n.nomineeName,
           votes: (prev?.votes ?? 0) + (n.votes ?? 0),
         })
       }
@@ -165,7 +174,7 @@ export function ResultsPage() {
                 <div className="text-sm font-semibold">Puntaje total por nominado</div>
                 <div className="mt-2 grid gap-2">
                   {totalsSorted.map((n) => (
-                    <div key={n.id} className="flex items-center justify-between rounded-lg border bg-zinc-950 px-3 py-2">
+                    <div key={n.key} className="flex items-center justify-between rounded-lg border bg-zinc-950 px-3 py-2">
                       <div className="truncate text-sm font-medium">{n.name}</div>
                       <div className="shrink-0 text-sm text-zinc-200">{n.votes}</div>
                     </div>
@@ -177,7 +186,7 @@ export function ResultsPage() {
                 <div className="text-sm font-semibold">Menos votos (total)</div>
                 <div className="mt-2 grid gap-2">
                   {leastTotals.map((n) => (
-                    <div key={n.id} className="flex items-center justify-between rounded-lg border bg-zinc-950 px-3 py-2">
+                    <div key={n.key} className="flex items-center justify-between rounded-lg border bg-zinc-950 px-3 py-2">
                       <div className="truncate text-sm font-medium">{n.name}</div>
                       <div className="shrink-0 text-sm text-zinc-200">{n.votes}</div>
                     </div>
